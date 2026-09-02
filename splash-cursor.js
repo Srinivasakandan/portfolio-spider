@@ -1,7 +1,12 @@
 /**
- * SPIDER-MAN CANVAS SPLASH CURSOR ENGINE
- * High Performance Web Particle & Splash Physics Engine
+ * SPIDER-MAN REALISTIC WEB CURSOR ENGINE
  * Author: Antigravity AI for Srinivasakandan Portfolio
+ * 
+ * Features:
+ * 1. Geometric Spider Web Shooter trail following cursor movement.
+ * 2. Full 8-spoke radial Spider Web shockwave blast on mouse click/touch ("THWIP!").
+ * 3. Magnetic web silk connection strands anchored to hovered buttons/links.
+ * 4. Glowing Web Reticle follower.
  */
 
 (function () {
@@ -14,197 +19,294 @@
   let width = (canvas.width = window.innerWidth);
   let height = (canvas.height = window.innerHeight);
 
-  // Particle System Storage
-  const particles = [];
-  const webStrands = [];
-  
-  // Mouse position state
-  let mouse = {
-    x: width / 2,
-    y: height / 2,
-    lx: width / 2,
-    ly: height / 2,
-    isMoving: false,
-    down: false
-  };
-
-  // Color options: Spider-Man Signature Red & Cyan Blue
-  const colorPalette = [
-    '#ff2a4b', // Web Red
-    '#00f0ff', // Cyber Blue
-    '#ffffff', // Pure Silk White
-    '#e60026', // Crimson Red
-    '#1d4ed8'  # Deep Navy Blue
-  ];
-
-  function getRandomColor() {
-    return colorPalette[Math.floor(Math.random() * colorPalette.length)];
-  }
-
-  // Handle Resize
   window.addEventListener('resize', () => {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
   });
 
-  // Particle Constructor
-  class Particle {
-    constructor(x, y, vx, vy, color, size, life) {
-      this.x = x;
-      this.y = y;
-      this.vx = vx;
-      this.vy = vy;
-      this.color = color;
-      this.size = size;
-      this.maxLife = life || 40;
-      this.life = this.maxLife;
-      this.decay = 0.94;
-    }
+  // Pointer position & history
+  const mouse = {
+    x: width / 2,
+    y: height / 2,
+    lx: width / 2,
+    ly: height / 2,
+    targetX: width / 2,
+    targetY: width / 2
+  };
 
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vx *= this.decay;
-      this.vy *= this.decay;
-      this.life--;
-    }
+  const trail = [];
+  const webShooterBlasts = [];
+  const hoveredElements = [];
 
-    draw(ctx) {
-      const alpha = Math.max(0, this.life / this.maxLife);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = this.color;
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
+  // Colors
+  const SPIDEY_RED = '#ff2a4b';
+  const SPIDEY_BLUE = '#00f0ff';
+  const SILK_WHITE = '#ffffff';
 
-  // Silk Web Line Constructor
-  class WebStrand {
-    constructor(x1, y1, x2, y2, color) {
-      this.x1 = x1;
-      this.y1 = y1;
-      this.x2 = x2;
-      this.y2 = y2;
-      this.color = color;
-      this.life = 25;
-      this.maxLife = 25;
-    }
-
-    update() {
-      this.life--;
-    }
-
-    draw(ctx) {
-      const alpha = Math.max(0, this.life / this.maxLife);
-      ctx.save();
-      ctx.globalAlpha = alpha * 0.7;
-      ctx.strokeStyle = this.color;
-      ctx.lineWidth = alpha * 2;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = this.color;
-      ctx.beginPath();
-      ctx.moveTo(this.x1, this.y1);
-      ctx.lineTo(this.x2, this.y2);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  // Create Splash Effect at (x, y)
-  function createSplash(x, y, count = 25) {
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5);
-      const speed = Math.random() * 8 + 3;
-      const vx = Math.cos(angle) * speed;
-      const vy = Math.sin(angle) * speed;
-      const color = getRandomColor();
-      const size = Math.random() * 3.5 + 1.5;
-      particles.push(new Particle(x, y, vx, vy, color, size, Math.random() * 30 + 20));
-      
-      // Connect radial silk strands
-      if (i % 3 === 0) {
-        webStrands.push(new WebStrand(x, y, x + vx * 6, y + vy * 6, color));
-      }
-    }
-  }
-
-  // Track Mouse Pointer
+  // Track Mouse Movement
   window.addEventListener('mousemove', (e) => {
     mouse.lx = mouse.x;
     mouse.ly = mouse.y;
     mouse.x = e.clientX;
     mouse.y = e.clientY;
-    mouse.isMoving = true;
 
-    // Create subtle web trail on movement
-    const dx = mouse.x - mouse.lx;
-    const dy = mouse.y - mouse.ly;
-    const dist = Math.hypot(dx, dy);
+    // Add trail node
+    trail.push({
+      x: mouse.x,
+      y: mouse.y,
+      life: 1.0,
+      size: Math.random() * 3 + 2
+    });
 
-    if (dist > 3) {
-      const vx = (Math.random() - 0.5) * 2 + dx * 0.15;
-      const vy = (Math.random() - 0.5) * 2 + dy * 0.15;
-      const color = getRandomColor();
-      particles.push(new Particle(mouse.x, mouse.y, vx, vy, color, Math.random() * 2.5 + 1, 30));
-
-      if (Math.random() > 0.5) {
-        webStrands.push(new WebStrand(mouse.lx, mouse.ly, mouse.x, mouse.y, color));
-      }
+    if (trail.length > 25) {
+      trail.shift();
     }
   });
 
-  // Track Mouse Click Splash
-  window.addEventListener('mousedown', (e) => {
-    mouse.down = true;
-    createSplash(e.clientX, e.clientY, 35);
-  });
-
-  window.addEventListener('mouseup', () => {
-    mouse.down = false;
-  });
-
-  // Touch Screen Support
+  // Track Touch Movement
   window.addEventListener('touchmove', (e) => {
     if (e.touches.length > 0) {
       const t = e.touches[0];
       mouse.x = t.clientX;
       mouse.y = t.clientY;
-      createSplash(t.clientX, t.clientY, 8);
+
+      trail.push({
+        x: mouse.x,
+        y: mouse.y,
+        life: 1.0,
+        size: 3
+      });
+      if (trail.length > 25) trail.shift();
     }
   }, { passive: true });
 
-  // Animation Loop
-  function render() {
-    ctx.clearRect(0, 0, width, height);
-
-    // Render Web Strands
-    for (let i = webStrands.length - 1; i >= 0; i--) {
-      const strand = webStrands[i];
-      strand.update();
-      strand.draw(ctx);
-      if (strand.life <= 0) {
-        webStrands.splice(i, 1);
-      }
-    }
-
-    // Render Particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.update();
-      p.draw(ctx);
-      if (p.life <= 0) {
-        particles.splice(i, 1);
-      }
-    }
-
-    requestAnimationFrame(render);
+  // Web Shooter Blast on Click ("THWIP!")
+  function spawnWebBlast(x, y) {
+    webShooterBlasts.push({
+      x: x,
+      y: y,
+      radius: 5,
+      maxRadius: Math.random() * 50 + 60,
+      spokes: 8,
+      rings: 4,
+      life: 1.0,
+      decay: 0.025,
+      angleOffset: Math.random() * Math.PI
+    });
   }
 
-  // Launch Engine
-  render();
+  window.addEventListener('mousedown', (e) => {
+    spawnWebBlast(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 0) {
+      spawnWebBlast(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+
+  // Find nearby interactive buttons/cards to attach magnetic web threads
+  setInterval(() => {
+    const interactiveEls = document.querySelectorAll('button, a, .glass-panel, .tech-badge');
+    hoveredElements.length = 0;
+
+    interactiveEls.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.innerHeight &&
+        rect.right <= window.innerWidth
+      ) {
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dist = Math.hypot(mouse.x - centerX, mouse.y - centerY);
+
+        if (dist < 180) {
+          hoveredElements.push({
+            x: centerX,
+            y: centerY,
+            cornerX: rect.left,
+            cornerY: rect.top,
+            dist: dist
+          });
+        }
+      }
+    });
+  }, 100);
+
+  // Draw Spider Web Graphic (Spokes + Concentric Rings)
+  function drawSpiderWeb(x, y, radius, spokes, rings, alpha, angleOffset) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = SPIDEY_RED;
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = SPIDEY_RED;
+
+    // 1. Draw Radial Spokes
+    const angleStep = (Math.PI * 2) / spokes;
+    const spokePoints = [];
+
+    for (let i = 0; i < spokes; i++) {
+      const angle = i * angleStep + angleOffset;
+      const endX = x + Math.cos(angle) * radius;
+      const endY = y + Math.sin(angle) * radius;
+
+      spokePoints.push({ x: endX, y: endY, angle: angle });
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+    }
+
+    // 2. Draw Concentric Web Rings (Curved silk connections)
+    ctx.strokeStyle = SPIDEY_BLUE;
+    ctx.lineWidth = 0.8;
+    ctx.shadowColor = SPIDEY_BLUE;
+
+    for (let r = 1; r <= rings; r++) {
+      const ringRadius = (radius / rings) * r;
+      ctx.beginPath();
+
+      for (let i = 0; i < spokes; i++) {
+        const angle1 = i * angleStep + angleOffset;
+        const angle2 = ((i + 1) % spokes) * angleStep + angleOffset;
+
+        const p1x = x + Math.cos(angle1) * ringRadius;
+        const p1y = y + Math.sin(angle1) * ringRadius;
+        const p2x = x + Math.cos(angle2) * ringRadius;
+        const p2y = y + Math.sin(angle2) * ringRadius;
+
+        // Curve slightly inward to look like realistic woven web silk
+        const midAngle = (angle1 + angle2) / 2;
+        const ctrlDist = ringRadius * 0.85;
+        const ctrlX = x + Math.cos(midAngle) * ctrlDist;
+        const ctrlY = y + Math.sin(midAngle) * ctrlDist;
+
+        if (i === 0) {
+          ctx.moveTo(p1x, p1y);
+        }
+        ctx.quadraticCurveTo(ctrlX, ctrlY, p2x, p2y);
+      }
+      ctx.stroke();
+    }
+
+    // 3. Center Web Core Glow
+    ctx.fillStyle = SILK_WHITE;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Animation Loop
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    // A. Draw Magnetic Web Threads from Cursor to Nearby Interactive Cards/Buttons
+    hoveredElements.forEach((target) => {
+      const alpha = (1 - target.dist / 180) * 0.7;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = SPIDEY_BLUE;
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = SPIDEY_BLUE;
+
+      ctx.beginPath();
+      ctx.moveTo(mouse.x, mouse.y);
+      ctx.lineTo(target.x, target.y);
+      ctx.stroke();
+
+      // Small web node anchor at target
+      ctx.fillStyle = SPIDEY_RED;
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // B. Draw Web Trail (Spider silk connecting cursor motion history)
+    if (trail.length > 1) {
+      ctx.save();
+      for (let i = 0; i < trail.length; i++) {
+        const p = trail[i];
+        p.life -= 0.025;
+
+        if (p.life > 0) {
+          // Fade node
+          ctx.globalAlpha = p.life * 0.8;
+          ctx.fillStyle = i % 2 === 0 ? SPIDEY_RED : SPIDEY_BLUE;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = ctx.fillStyle;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Connect silk lines between adjacent trail nodes
+          if (i > 0) {
+            const prev = trail[i - 1];
+            ctx.strokeStyle = SILK_WHITE;
+            ctx.lineWidth = p.life * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(prev.x, prev.y);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+          }
+
+          // Draw cross web lines between nearby nodes in trail
+          if (i > 3) {
+            const pOld = trail[i - 3];
+            const dist = Math.hypot(p.x - pOld.x, p.y - pOld.y);
+            if (dist < 80) {
+              ctx.strokeStyle = SPIDEY_RED;
+              ctx.lineWidth = 0.5;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(pOld.x, pOld.y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+      ctx.restore();
+
+      // Filter out dead trail nodes
+      for (let i = trail.length - 1; i >= 0; i--) {
+        if (trail[i].life <= 0) trail.splice(i, 1);
+      }
+    }
+
+    // C. Draw Expanding Web Shooter Blasts ("THWIP!")
+    for (let i = webShooterBlasts.length - 1; i >= 0; i--) {
+      const blast = webShooterBlasts[i];
+      blast.radius += (blast.maxRadius - blast.radius) * 0.15;
+      blast.life -= blast.decay;
+
+      if (blast.life > 0) {
+        drawSpiderWeb(
+          blast.x,
+          blast.y,
+          blast.radius,
+          blast.spokes,
+          blast.rings,
+          blast.life,
+          blast.angleOffset
+        );
+      } else {
+        webShooterBlasts.splice(i, 1);
+      }
+    }
+
+    // D. Draw Active Web Reticle at Current Mouse Position
+    drawSpiderWeb(mouse.x, mouse.y, 22, 6, 2, 0.85, 0);
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
 })();

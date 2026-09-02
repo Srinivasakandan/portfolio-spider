@@ -64,6 +64,11 @@ body {
   min-height: 100vh;
 }
 
+/* Custom Spider Web Cursor Styling */
+html, body, a, button, input, textarea, select, .glass-panel, .tech-badge {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Cg fill='none' stroke='%23ff2a4b' stroke-width='1.5'%3E%3Ccircle cx='18' cy='18' r='16' stroke='%2300f0ff' stroke-opacity='0.5' stroke-dasharray='3 3'/%3E%3Ccircle cx='18' cy='18' r='9' stroke='%23ff2a4b' stroke-opacity='0.8'/%3E%3Cpath d='M18 2v32M2 18h32M6 6l24 24M30 6L6 30' stroke-opacity='0.9'/%3E%3Ccircle cx='18' cy='18' r='3.5' fill='%23ff2a4b'/%3E%3C/g%3E%3C/svg%3E") 18 18, auto !important;
+}
+
 /* Canvas Splash Cursor Positioning */
 #splash-canvas {
   position: fixed;
